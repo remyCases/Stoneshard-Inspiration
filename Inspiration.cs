@@ -24,7 +24,13 @@ public class Inspiration : Mod
         s_pray.OriginY = 12;
 		UndertaleSprite s_b_pray = Msl.GetSprite("s_b_pray");
         s_b_pray.OriginX = 12;
-        s_b_pray.OriginY = 12;
+        s_b_pray.OriginY = 12;	
+        UndertaleSprite s_weapon_dealer = Msl.GetSprite("s_weapon_dealer");
+        s_weapon_dealer.OriginX = 12;
+        s_weapon_dealer.OriginY = 12;
+        UndertaleSprite s_corruption = Msl.GetSprite("s_corruption");
+        s_corruption.OriginX = 12;
+        s_corruption.OriginY = 12;
 
         UndertaleGameObject pray_ico = Msl.AddObject("o_skill_pray_ico", "s_pray", "o_skill_ico", true, false, true, CollisionShapeFlags.Circle);
         UndertaleGameObject pray = Msl.AddObject("o_skill_pray", "s_pray", "o_skill", true, false, true, CollisionShapeFlags.Circle);
@@ -55,17 +61,49 @@ public class Inspiration : Mod
             with (target)
             {
                 ds_map_clear(other.data)
-                ds_map_add(other.data, ""CRT"", 50)
-                ds_map_add(other.data, ""CRTD"", 50)
+                ds_map_add(other.data, ""CRT"", 40)
+                ds_map_add(other.data, ""Miracle_Chance"", 40)
                 scr_atr_calc(id)
             }
         ", EventType.Alarm, 2);
 
-        Msl.AddSkillTree("Inspiration", MetaCaterory.Utilities, "s_branch_modded", new SkillLocation("o_skill_pray_ico", 55, 24));
+        UndertaleGameObject weapon_dealer = Msl.AddObject($"o_pass_skill_weapon_dealer", $"s_weapon_dealer", "o_skill_passive", true, false, true, CollisionShapeFlags.Circle);
+
+        // ds_list_find_index(category, "weapon")
+        // gml_GlobalScript_scr_trade_item (price is already computed)
+        // Buying_Prices affected
+        // sell weapons : buyer_inventory.object_index == o_inventory
+        // to modify gml_Object_o_inv_slot_Step_0
+        // 100 ?
+        // add :
+        // var bonus_weapon_price = 0 (ligne 70)
+        // if ((ds_list_find_index(category, "weapon") >= 0)) { bonus_weapon_price = 1 or 1.5 } (ligne 80-81)
+        // durable_price * bonus_weapon_price (ligne 101)
+        UndertaleGameObject corruption = Msl.AddObject($"o_pass_skill_corruption", $"s_corruption", "o_skill_passive", true, false, true, CollisionShapeFlags.Circle);
+
+        Msl.AddNewEvent(weapon_dealer, @"
+            event_inherited()
+            scr_skill_atr(""weapon_dealer"")
+            class = ""spell""
+            passive = 1
+        ", EventType.Create, 0);
+        
+        Msl.AddNewEvent(corruption, @"
+            event_inherited()
+            scr_skill_atr(""corruption"")
+            class = ""spell""
+            passive = 1
+        ", EventType.Create, 0);
+
+        Msl.AddSkillTree("Inspiration", MetaCaterory.Utilities, "s_branch_modded", 
+            new SkillLocation("o_skill_pray_ico", 55, 24),
+            new SkillLocation("o_pass_skill_weapon_dealer", 55, 81),
+            new SkillLocation("o_pass_skill_corruption", 55, 138)
+        );
         
         Msl.LoadGML("gml_GlobalScript_scr_skill_tier_init")
             .MatchFrom("}")
-            .InsertBelow("global.inspiration_tier1 = [\"Inspiration\", o_skill_pray_ico]")
+            .InsertBelow("global.inspiration_tier1 = [\"Inspiration\", o_skill_pray_ico, o_pass_skill_weapon_dealer, o_pass_skill_corruption]")
             .Save();
 			
         Msl.LoadGML("gml_GlobalScript_table_Modifiers")
@@ -122,20 +160,27 @@ public class Inspiration : Mod
     {
         string tier = $"\"{string.Concat(Enumerable.Repeat($"Inspiration;", 12))}\", ";
 
-        string rarity_ru = "Inspiration / Inspiration / Inspiration / Inspiration";
-        string rarity_en = "Inspiration";
-        string rarity_ch = "Inspiration";
-        string rarity_ge = "Inspiration / Inspiration / Inspiration / Inspiration";
-        string rarity_sp = "Inspiration / Inspiration / Inspiration / Inspiration";
-        string rarity_fr = "Inspiration / Inspiration / Inspiration / Inspiration";
-        string rarity_it = "Inspiration / Inspiration / Inspiration / Inspiration";
-        string rarity_po = "Inspiration / Inspiration / Inspiration / Inspiration";
-        string rarity_pl = "Inspiration / Inspiration / Inspiration / Inspiration";
-        string rarity_tu = "Inspiration";
-        string rarity_jp = "Inspiration";
-        string rarity_kr = "Inspiration";
-        string rarity = $"\"10;{rarity_ru};{rarity_en};{rarity_ch};{rarity_ge};{rarity_sp};{rarity_fr};{rarity_it};{rarity_po};{rarity_pl};{rarity_tu};{rarity_jp};{rarity_kr};\",";
-        string hover = $"\"Inspiration;{string.Concat(Enumerable.Repeat($"Inspired you are;", 12))}\",";
+        Dictionary<ModLanguage, string> rarity_dict = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {
+            {ModLanguage.Russian, "Inspiration / Inspiration / Inspiration / Inspiration"},
+            {ModLanguage.English, "Inspiration"},
+            {ModLanguage.Chinese, "Inspiration"},
+            {ModLanguage.German, "Inspiration / Inspiration / Inspiration / Inspiration"},
+            {ModLanguage.Spanish, "Inspiration / Inspiration / Inspiration / Inspiration"},
+            {ModLanguage.French, "Inspiration / Inspiration / Inspiration / Inspiration"},
+            {ModLanguage.Italian, "Inspiration / Inspiration / Inspiration / Inspiration"},
+            {ModLanguage.Portuguese, "Inspiration / Inspiration / Inspiration / Inspiration"},
+            {ModLanguage.Polish, "Inspiration / Inspiration / Inspiration / Inspiration"},
+            {ModLanguage.Turkish, "Inspiration"},
+            {ModLanguage.Japanese, "Inspiration"},
+            {ModLanguage.Korean, "Inspiration"},
+        });
+        string rarity = $"\"10;{string.Join(";", rarity_dict.Values)}\",";
+
+        string hover_en = "Manipulate others and yourself by being charismatic.";
+        Dictionary<ModLanguage, string> hover_dict = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {
+           {ModLanguage.English, hover_en},
+        });
+        string hover = $"\"Inspiration;{string.Join(";", hover_dict.Values)}\",";
         
         foreach(string item in input)
         {
@@ -186,12 +231,27 @@ public class Inspiration : Mod
     {
         string id_pray = "pray";
         string name_pray_en = "Pray";
-        string name_pray = $"{id_pray};" + string.Concat(Enumerable.Repeat($"{name_pray_en};", 12));
-        string desc_pray_en = "Pray a lot.";
-        string desc_pray = $"{id_pray};" + string.Concat(Enumerable.Repeat($"{desc_pray_en};", 12));
+        string desc_pray_en = "You believe a powerful being is guiding you, granting ~lg~40~/~% critical chance and ~lg~40~/~% miracle chance for ~lg~5~/~ turns. Landing a non-critical attack or a non-miracle spell will remove this buff.";
 
-        string name = $"\"{name_pray}\",";
-        string desc = $"\"{desc_pray}\",";
+        Dictionary<ModLanguage, string> name_pray = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, name_pray_en},});
+        Dictionary<ModLanguage, string> desc_pray = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, desc_pray_en},});
+
+        string id_weapon_dealer = "weapon_dealer";
+        string name_weapon_dealer_en = "Weapon dealer";
+        string desc_weapon_dealer_en = "Sell value of weapons is increased by ~lg~50~/~%. You can also give weapons with more than ~lg~80~/~% durability to a settlement elder or quatermaster to improve your reputation.";
+
+        Dictionary<ModLanguage, string> name_weapon_dealer = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, name_weapon_dealer_en},});
+        Dictionary<ModLanguage, string> des_weapon_dealer = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, desc_weapon_dealer_en},});
+        
+        string id_corruption = "corruption";
+        string name_corruption_en = "Corruption";
+        string desc_corruption_en = "Guards can now increase your reputation, for a little fee. You can also ask them to follow and help you for ~lg~5~/~ tiles around their settlement.";
+
+        Dictionary<ModLanguage, string> name_corruption = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, name_corruption_en},});
+        Dictionary<ModLanguage, string> des_corruption = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, desc_corruption_en},});
+
+        string name = $"\"{id_pray};{string.Join(";", name_pray.Values)}\",\"{id_weapon_dealer};{string.Join(";", name_weapon_dealer.Values)}\",\"{id_corruption};{string.Join(";", name_corruption.Values)}\",";
+        string desc = $"\"{id_pray};{string.Join(";", desc_pray.Values)}\",\"{id_weapon_dealer};{string.Join(";", des_weapon_dealer.Values)}\",\"{id_corruption};{string.Join(";", des_corruption.Values)}\",";
 
         string undead = "\";;///// UNDEAD;///// UNDEAD;;;;;///// UNDEAD;///// UNDEAD;;;;\",";
 
@@ -215,7 +275,7 @@ public class Inspiration : Mod
         string forbidden = "\";;// FORBIDDEN MAGIC;// FORBIDDEN MAGIC;;;;;;// FORBIDDEN MAGIC;;;;\",";
         
         string pray_start = string.Concat(Enumerable.Repeat("pray;", 15));
-        string pray_speech = string.Concat(Enumerable.Repeat("Volunt En!;", 15));
+        string pray_speech = string.Concat(Enumerable.Repeat("Volunt... En!;", 15));
         string pray_end = string.Concat(Enumerable.Repeat("pray_end;", 15));
         
         string speech = 
