@@ -48,13 +48,17 @@ public class Inspiration : Mod
         Msl.AddNewEvent(pray, @"
             event_inherited()
             skill = ""pray""
+            ds_list_add(attribute, ds_map_find_value(global.attribute, ""WIL""))
             scr_skill_atr()
         ", EventType.Create, 0);
 
         Msl.AddNewEvent(pray, @"
+            if instance_exists(owner)
+            {
+                ds_map_replace(data, ""CRT"", 25 + (0.5 * owner.WIL))
+                ds_map_replace(data, ""Miracle_Chance"", 25 + (0.5 * owner.WIL))
+            }
             event_inherited()
-            ds_map_replace(text_map, ""CRT"", 30 + (0.5 * owner.WIL))
-            ds_map_replace(text_map, ""Miracle_Chance"", 30 + (0.5 * owner.WIL))
         ", EventType.Other, 17);
         
         Msl.AddNewEvent(b_pray, @"
@@ -70,8 +74,8 @@ public class Inspiration : Mod
             with (target)
             {
                 ds_map_clear(other.data)
-                ds_map_add(other.data, ""CRT"", 40)
-                ds_map_add(other.data, ""Miracle_Chance"", 40)
+                ds_map_add(other.data, ""CRT"", 25 + (0.5 * other.WIL))
+                ds_map_add(other.data, ""Miracle_Chance"", 25 + (0.5 * other.WIL))
                 scr_atr_calc(id)
             }
         ", EventType.Alarm, 2);
@@ -161,8 +165,46 @@ pop.v.d local.bonus_weapon_price
         Msl.AddNewEvent(fearsome, @"
             event_inherited()
             scr_skill_atr(""fearsome"")
+            ds_list_add(attribute, ds_map_find_value(global.attribute, ""STR""), ds_map_find_value(global.attribute, ""WIL""))
             passive = 1
         ", EventType.Create, 0);
+
+        Msl.AddNewEvent(fearsome, @"
+            if instance_exists(owner)
+            {
+                ds_map_replace(text_map, ""WTFR"", 40 + (owner.WIL + owner.STR))
+            }
+            event_inherited()
+        ", EventType.Other, 17);
+
+        Msl.LoadGML("gml_GlobalScript_scr_simple_damage")
+            .MatchFrom("hit_dmg > ")
+            .ReplaceBy(@"
+var _percent_threshold_moral_hit = 0.1
+with (o_player)
+{
+    if (scr_passive_skill_is_open(o_pass_skill_fearsome, id))
+    {
+        _percent_threshold_moral_hit = 0.08
+    }
+}
+if (hit_dmg > (max_hp * _percent_threshold_moral_hit))
+")
+            .Save();
+
+        Msl.LoadGML("gml_GlobalScript_scr_morale_reduce")
+            .MatchFrom("argument1 == undefined")
+            .InsertAbove(@"
+if(scr_passive_skill_is_open(o_pass_skill_fearsome, id))
+{
+    var _factor = 0
+    with(o_player)
+    {
+        _factor = 40 + WIL + STR
+    }
+    argument0 *= (1 + _factor/100);
+}")
+            .Save();
 
         Msl.AddSkillTree("Inspiration", MetaCaterory.Utilities, "s_branch_modded", 
             new SkillLocation("o_skill_pray_ico", 55, 24),
@@ -304,7 +346,7 @@ popz.v";
         string id_pray = "o_b_pray";
         string name_pray_en = "Pray";
         string name_pray = $"{id_pray};" + string.Concat(Enumerable.Repeat($"{name_pray_en};", 12));
-        string desc_pray_en = "I prayed.";
+        string desc_pray_en = "Your prayer was answered ! Or maybe you are just more confident about yourself.";
         string desc_pray = $"{id_pray};" + string.Concat(Enumerable.Repeat($"{desc_pray_en};", 12));
 
         string name = $"\"{name_pray}\",";
@@ -329,28 +371,28 @@ popz.v";
     {
         string id_pray = "pray";
         string name_pray_en = "Pray";
-        string desc_pray_en = "You believe a powerful being is guiding you, granting ~lg~40~/~% critical chance and ~lg~40~/~% miracle chance for ~lg~5~/~ turns. Landing a non-critical attack or a non-miracle spell will remove this buff.";
+        string desc_pray_en = "You believe a powerful being is guiding you and is granting you ~lg~+/*CRT*/%~/~ critical chance and ~lg~+/*Miracle_Chance*/%~/~ miracle chance for ~lg~5~/~ turns. Landing a non-critical attack or a non-miracle spell will remove this buff.";
 
         Dictionary<ModLanguage, string> name_pray = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, name_pray_en},});
         Dictionary<ModLanguage, string> desc_pray = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, desc_pray_en},});
 
         string id_weapon_dealer = "weapon_dealer";
         string name_weapon_dealer_en = "Weapon dealer";
-        string desc_weapon_dealer_en = "Sell value of weapons is increased by ~lg~50~/~%. You can also give weapons with more than ~lg~80~/~% durability to a settlement elder or quatermaster to improve your reputation.";
+        string desc_weapon_dealer_en = "Sell value of weapons is increased by ~lg~50%~/~. You can also give weapons with more than ~lg~80%~/~ durability to a settlement elder or quatermaster to improve your reputation. ##~r~(Not Implemented)~/~";
 
         Dictionary<ModLanguage, string> name_weapon_dealer = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, name_weapon_dealer_en},});
         Dictionary<ModLanguage, string> des_weapon_dealer = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, desc_weapon_dealer_en},});
         
         string id_corruption = "corruption";
         string name_corruption_en = "Corruption";
-        string desc_corruption_en = "Once a day, guards can now increase your reputation, for a little fee. You can also ask them to follow and help you for ~lg~5~/~ tiles around their settlement.";
+        string desc_corruption_en = "Once a day, guards can increase your reputation, for a little fee. You can also ask them to follow and help you for ~lg~5~/~ tiles around their settlement. ##~r~(Not Implemented)~/~";
 
         Dictionary<ModLanguage, string> name_corruption = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, name_corruption_en},});
         Dictionary<ModLanguage, string> des_corruption = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, desc_corruption_en},});
         
         string id_fearsome = "fearsome";
         string name_fearsome_en = "Fearsome";
-        string desc_fearsome_en = "You're so imposing during combat, your foes are more likely to flee while hit by your attack.";
+        string desc_fearsome_en = "Weak auto-attacks are more likely to reduce the enemies' ~w~will to fight~/~ and ~w~will to fight~/~ losses are increased by ~lg~/*WTFR*/%~/~.";
 
         Dictionary<ModLanguage, string> name_fearsome = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, name_fearsome_en},});
         Dictionary<ModLanguage, string> des_fearsome = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, desc_fearsome_en},});
