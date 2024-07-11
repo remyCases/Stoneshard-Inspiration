@@ -30,7 +30,10 @@ public class Inspiration : Mod
         s_weapon_dealer.OriginY = 12;
         UndertaleSprite s_corruption = Msl.GetSprite("s_corruption");
         s_corruption.OriginX = 12;
-        s_corruption.OriginY = 12;
+        s_corruption.OriginY = 12;  
+        UndertaleSprite s_fearsome = Msl.GetSprite("s_fearsome");
+        s_fearsome.OriginX = 12;
+        s_fearsome.OriginY = 12;
 
         UndertaleGameObject pray_ico = Msl.AddObject("o_skill_pray_ico", "s_pray", "o_skill_ico", true, false, true, CollisionShapeFlags.Circle);
         UndertaleGameObject pray = Msl.AddObject("o_skill_pray", "s_pray", "o_skill", true, false, true, CollisionShapeFlags.Circle);
@@ -47,6 +50,12 @@ public class Inspiration : Mod
             skill = ""pray""
             scr_skill_atr()
         ", EventType.Create, 0);
+
+        Msl.AddNewEvent(pray, @"
+            event_inherited()
+            ds_map_replace(text_map, ""CRT"", 30 + (0.5 * owner.WIL))
+            ds_map_replace(text_map, ""Miracle_Chance"", 30 + (0.5 * owner.WIL))
+        ", EventType.Other, 17);
         
         Msl.AddNewEvent(b_pray, @"
             event_inherited()
@@ -67,6 +76,39 @@ public class Inspiration : Mod
             }
         ", EventType.Alarm, 2);
 
+        Msl.AddFunction(@"
+        function scr_mod_inspiration_check_buff_pray(argument0)
+        {
+            if ((attack_result != ""crit"") && argument0)
+            {
+                if scr_instance_exists_in_list(o_b_pray)
+                {
+                    with (o_b_pray)
+                        instance_destroy()
+                }
+            }
+        }  
+        ", "scr_mod_inspiration_check_buff_pray");
+        
+        Msl.LoadAssemblyAsString("gml_GlobalScript_scr_attack")
+            .Apply(AttackIterator)
+            .Save();
+
+        Msl.LoadGML("gml_Object_o_skill_Other_13")
+            .MatchAll()
+            .InsertBelow(@"
+if(asset_get_index(spell) != o_b_pray && !is_crit && ((damage > 0) || (duration > 0))) 
+{
+    if (scr_instance_exists_in_list(o_b_pray, owner.buffs))
+    {
+        with(o_b_pray)
+        {
+            instance_destroy()
+        }
+    }
+}")
+            .Save();
+
         UndertaleGameObject weapon_dealer = Msl.AddObject($"o_pass_skill_weapon_dealer", $"s_weapon_dealer", "o_skill_passive", true, false, true, CollisionShapeFlags.Circle);
 
         // ds_list_find_index(category, "weapon")
@@ -81,29 +123,57 @@ public class Inspiration : Mod
         // durable_price * bonus_weapon_price (ligne 101)
         UndertaleGameObject corruption = Msl.AddObject($"o_pass_skill_corruption", $"s_corruption", "o_skill_passive", true, false, true, CollisionShapeFlags.Circle);
 
+        Msl.LoadAssemblyAsString("gml_Object_o_inv_slot_Step_0")
+            .MatchFrom("pop.v.i local._curse_price")
+            .InsertBelow("pushi.e 1\npop.v.i local.bonus_weapon_price")
+            .MatchFrom("push.s \"is_cursed\"")
+            .InsertAbove(@"
+push.s ""weapon""
+conv.s.v
+push.v self.category
+call.i ds_list_find_index(argc=2)
+pushi.e 0
+cmp.i.v GTE
+bf [801]
+
+:[800]
+push.d 0.5
+pop.v.d local.bonus_weapon_price
+
+:[801]
+")
+            .Save();
+        
+        UndertaleGameObject fearsome = Msl.AddObject($"o_pass_skill_fearsome", $"s_fearsome", "o_skill_passive", true, false, true, CollisionShapeFlags.Circle);
+
         Msl.AddNewEvent(weapon_dealer, @"
             event_inherited()
             scr_skill_atr(""weapon_dealer"")
-            class = ""spell""
             passive = 1
         ", EventType.Create, 0);
         
         Msl.AddNewEvent(corruption, @"
             event_inherited()
             scr_skill_atr(""corruption"")
-            class = ""spell""
+            passive = 1
+        ", EventType.Create, 0);
+
+        Msl.AddNewEvent(fearsome, @"
+            event_inherited()
+            scr_skill_atr(""fearsome"")
             passive = 1
         ", EventType.Create, 0);
 
         Msl.AddSkillTree("Inspiration", MetaCaterory.Utilities, "s_branch_modded", 
             new SkillLocation("o_skill_pray_ico", 55, 24),
             new SkillLocation("o_pass_skill_weapon_dealer", 55, 81),
-            new SkillLocation("o_pass_skill_corruption", 55, 138)
+            new SkillLocation("o_pass_skill_corruption", 55, 138),
+            new SkillLocation("o_pass_skill_fearsome", 128, 24)
         );
         
         Msl.LoadGML("gml_GlobalScript_scr_skill_tier_init")
             .MatchFrom("}")
-            .InsertBelow("global.inspiration_tier1 = [\"Inspiration\", o_skill_pray_ico, o_pass_skill_weapon_dealer, o_pass_skill_corruption]")
+            .InsertBelow("global.inspiration_tier1 = [\"Inspiration\", o_skill_pray_ico, o_pass_skill_weapon_dealer, o_pass_skill_corruption, o_pass_skill_fearsome]")
             .Save();
 			
         Msl.LoadGML("gml_GlobalScript_table_Modifiers")
@@ -136,7 +206,7 @@ public class Inspiration : Mod
             AOE_Width : 0, 
             is_movement: false, 
             Pattern: Msl.SkillsStatPattern.normal, 
-            Class : Msl.SkillsStatClass.spell, 
+            Class : Msl.SkillsStatClass.skill, 
             Bonus_Range: false, 
             Starcast: "", 
             Branch: Msl.SkillsStatBranch.none, 
@@ -148,13 +218,41 @@ public class Inspiration : Mod
             Attack: false, 
             Stance: false, 
             Charge: false, 
-            Maneuver: false, 
-            Spell: true);
+            Maneuver: true, 
+            Spell: false);
 
         Msl.LoadAssemblyAsString("gml_Object_o_skill_fast_panel_Alarm_0")
             .MatchFrom("pushi.e 3622")
             .InsertAbove("pushglb.v global.inspiration_tier1\ncall.i gml_Script_scr_skill_open_from_array1d(argc=1)\npopz.v")
             .Save();
+    }
+    private static IEnumerable<string> AttackIterator(IEnumerable<string> input)
+    {
+        string insert = @"
+pushloc.v local._isPlayerAttacker
+call.i gml_Script_scr_mod_inspiration_check_buff_pray(argc=1)
+popz.v";
+
+        bool findHit = false;
+        bool insertDone = false;
+
+        foreach (string item in input)
+        {
+            if (!findHit && item.Contains("pushloc.v local.hit"))
+            {
+                findHit = true;
+            }
+            else if (findHit && item.Contains("ret.v"))
+            {
+                insertDone = true;
+                yield return insert;
+            }
+            else if (!insertDone && findHit)
+            {
+                findHit = false;
+            }
+            yield return item;
+        }   
     }
     private static IEnumerable<string> TextIterator(IEnumerable<string> input)
     {
@@ -245,13 +343,26 @@ public class Inspiration : Mod
         
         string id_corruption = "corruption";
         string name_corruption_en = "Corruption";
-        string desc_corruption_en = "Guards can now increase your reputation, for a little fee. You can also ask them to follow and help you for ~lg~5~/~ tiles around their settlement.";
+        string desc_corruption_en = "Once a day, guards can now increase your reputation, for a little fee. You can also ask them to follow and help you for ~lg~5~/~ tiles around their settlement.";
 
         Dictionary<ModLanguage, string> name_corruption = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, name_corruption_en},});
         Dictionary<ModLanguage, string> des_corruption = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, desc_corruption_en},});
+        
+        string id_fearsome = "fearsome";
+        string name_fearsome_en = "Fearsome";
+        string desc_fearsome_en = "You're so imposing during combat, your foes are more likely to flee while hit by your attack.";
 
-        string name = $"\"{id_pray};{string.Join(";", name_pray.Values)}\",\"{id_weapon_dealer};{string.Join(";", name_weapon_dealer.Values)}\",\"{id_corruption};{string.Join(";", name_corruption.Values)}\",";
-        string desc = $"\"{id_pray};{string.Join(";", desc_pray.Values)}\",\"{id_weapon_dealer};{string.Join(";", des_weapon_dealer.Values)}\",\"{id_corruption};{string.Join(";", des_corruption.Values)}\",";
+        Dictionary<ModLanguage, string> name_fearsome = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, name_fearsome_en},});
+        Dictionary<ModLanguage, string> des_fearsome = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {{ModLanguage.English, desc_fearsome_en},});
+
+        string name = @$"""{id_pray};{string.Join(";", name_pray.Values)}"",
+            ""{id_weapon_dealer};{string.Join(";", name_weapon_dealer.Values)}"",
+            ""{id_corruption};{string.Join(";", name_corruption.Values)}"",
+            ""{id_fearsome};{string.Join(";", name_fearsome.Values)}"",";
+        string desc = @$"""{id_pray};{string.Join(";", desc_pray.Values)}"",
+            ""{id_weapon_dealer};{string.Join(";", des_weapon_dealer.Values)}"",
+            ""{id_corruption};{string.Join(";", des_corruption.Values)}"",
+            ""{id_fearsome};{string.Join(";", des_fearsome.Values)}"",";
 
         string undead = "\";;///// UNDEAD;///// UNDEAD;;;;;///// UNDEAD;///// UNDEAD;;;;\",";
 
@@ -260,7 +371,7 @@ public class Inspiration : Mod
             if (item.Contains("\";skill_name_end") && item.Contains(undead))
             {
                 string newItem = item;
-                newItem = newItem.Insert(newItem.IndexOf("\";skill_name_end"), name);
+                newItem = newItem.Insert(newItem.IndexOf("\";skill_name_end"), name.Replace('\n', ' '));
                 newItem = newItem.Insert(newItem.IndexOf(undead) + undead.Length, desc.Replace('\n', ' '));
                 yield return newItem;
             }
