@@ -17,23 +17,14 @@ public class Inspiration : Mod
     public override string Version => "0.1.0";
     public override string TargetVersion => "0.8.2.10";
 
-    public override void PatchMod()
+    private static void AddPray()
     {
-		UndertaleSprite s_pray = Msl.GetSprite("s_pray");
+        UndertaleSprite s_pray = Msl.GetSprite("s_pray");
         s_pray.OriginX = 12;
         s_pray.OriginY = 12;
 		UndertaleSprite s_b_pray = Msl.GetSprite("s_b_pray");
         s_b_pray.OriginX = 12;
         s_b_pray.OriginY = 12;	
-        UndertaleSprite s_weapon_dealer = Msl.GetSprite("s_weapon_dealer");
-        s_weapon_dealer.OriginX = 12;
-        s_weapon_dealer.OriginY = 12;
-        UndertaleSprite s_corruption = Msl.GetSprite("s_corruption");
-        s_corruption.OriginX = 12;
-        s_corruption.OriginY = 12;  
-        UndertaleSprite s_fearsome = Msl.GetSprite("s_fearsome");
-        s_fearsome.OriginX = 12;
-        s_fearsome.OriginY = 12;
 
         UndertaleGameObject pray_ico = Msl.AddObject("o_skill_pray_ico", "s_pray", "o_skill_ico", true, false, true, CollisionShapeFlags.Circle);
         UndertaleGameObject pray = Msl.AddObject("o_skill_pray", "s_pray", "o_skill", true, false, true, CollisionShapeFlags.Circle);
@@ -113,55 +104,43 @@ if(asset_get_index(spell) != o_b_pray && !is_crit && ((damage > 0) || (duration 
 }")
             .Save();
 
-        UndertaleGameObject weapon_dealer = Msl.AddObject($"o_pass_skill_weapon_dealer", $"s_weapon_dealer", "o_skill_passive", true, false, true, CollisionShapeFlags.Circle);
-
-        // ds_list_find_index(category, "weapon")
-        // gml_GlobalScript_scr_trade_item (price is already computed)
-        // Buying_Prices affected
-        // sell weapons : buyer_inventory.object_index == o_inventory
-        // to modify gml_Object_o_inv_slot_Step_0
-        // 100 ?
-        // add :
-        // var bonus_weapon_price = 0 (ligne 70)
-        // if ((ds_list_find_index(category, "weapon") >= 0)) { bonus_weapon_price = 1 or 1.5 } (ligne 80-81)
-        // durable_price * bonus_weapon_price (ligne 101)
-        UndertaleGameObject corruption = Msl.AddObject($"o_pass_skill_corruption", $"s_corruption", "o_skill_passive", true, false, true, CollisionShapeFlags.Circle);
-
-        Msl.LoadAssemblyAsString("gml_Object_o_inv_slot_Step_0")
-            .MatchFrom("pop.v.i local._curse_price")
-            .InsertBelow("pushi.e 1\npop.v.i local.bonus_weapon_price")
-            .MatchFrom("push.s \"is_cursed\"")
-            .InsertAbove(@"
-push.s ""weapon""
-conv.s.v
-push.v self.category
-call.i ds_list_find_index(argc=2)
-pushi.e 0
-cmp.i.v GTE
-bf [801]
-
-:[800]
-push.d 0.5
-pop.v.d local.bonus_weapon_price
-
-:[801]
-")
-            .Save();
+        Msl.InjectTableSkillsStat(
+            metaGroup: Msl.SkillsStatMetaGroup.MAGICMASTERY,
+            id: "pray",
+            Object: "o_b_pray", 
+            Target: Msl.SkillsStatTarget.NoTarget, 
+            Range: "0", 
+            KD: 20, 
+            MP: 10, 
+            Reserv: 0, 
+            Duration : 5, 
+            AOE_Lenght: 0, 
+            AOE_Width : 0, 
+            is_movement: false, 
+            Pattern: Msl.SkillsStatPattern.normal, 
+            Class : Msl.SkillsStatClass.skill, 
+            Bonus_Range: false, 
+            Starcast: "", 
+            Branch: Msl.SkillsStatBranch.none, 
+            is_knockback: false, 
+            Crime: false, 
+            metacategory: Msl.SkillsStatMetacategory.none, 
+            FMB: 0, 
+            AP: "x", 
+            Attack: false, 
+            Stance: false, 
+            Charge: false, 
+            Maneuver: true, 
+            Spell: false);
+    }
+    private static void AddFearsome()
+    {
+        UndertaleSprite s_fearsome = Msl.GetSprite("s_fearsome");
+        s_fearsome.OriginX = 12;
+        s_fearsome.OriginY = 12;
         
         UndertaleGameObject fearsome = Msl.AddObject($"o_pass_skill_fearsome", $"s_fearsome", "o_skill_passive", true, false, true, CollisionShapeFlags.Circle);
-
-        Msl.AddNewEvent(weapon_dealer, @"
-            event_inherited()
-            scr_skill_atr(""weapon_dealer"")
-            passive = 1
-        ", EventType.Create, 0);
         
-        Msl.AddNewEvent(corruption, @"
-            event_inherited()
-            scr_skill_atr(""corruption"")
-            passive = 1
-        ", EventType.Create, 0);
-
         Msl.AddNewEvent(fearsome, @"
             event_inherited()
             scr_skill_atr(""fearsome"")
@@ -206,6 +185,68 @@ if(scr_passive_skill_is_open(o_pass_skill_fearsome, id))
 }")
             .Save();
 
+    }
+    public override void PatchMod()
+    {
+
+        AddPray();
+        AddFearsome();
+
+        UndertaleSprite s_weapon_dealer = Msl.GetSprite("s_weapon_dealer");
+        s_weapon_dealer.OriginX = 12;
+        s_weapon_dealer.OriginY = 12;
+        UndertaleSprite s_corruption = Msl.GetSprite("s_corruption");
+        s_corruption.OriginX = 12;
+        s_corruption.OriginY = 12;  
+
+        UndertaleGameObject weapon_dealer = Msl.AddObject($"o_pass_skill_weapon_dealer", $"s_weapon_dealer", "o_skill_passive", true, false, true, CollisionShapeFlags.Circle);
+
+        // ds_list_find_index(category, "weapon")
+        // gml_GlobalScript_scr_trade_item (price is already computed)
+        // Buying_Prices affected
+        // sell weapons : buyer_inventory.object_index == o_inventory
+        // to modify gml_Object_o_inv_slot_Step_0
+        // 100 ?
+        // add :
+        // var bonus_weapon_price = 0 (ligne 70)
+        // if ((ds_list_find_index(category, "weapon") >= 0)) { bonus_weapon_price = 1 or 1.5 } (ligne 80-81)
+        // durable_price * bonus_weapon_price (ligne 101)
+        UndertaleGameObject corruption = Msl.AddObject($"o_pass_skill_corruption", $"s_corruption", "o_skill_passive", true, false, true, CollisionShapeFlags.Circle);
+
+        Msl.LoadAssemblyAsString("gml_Object_o_inv_slot_Step_0")
+            .MatchFrom("pop.v.i local._curse_price")
+            .InsertBelow("pushi.e 1\npop.v.i local.bonus_weapon_price")
+            .MatchFrom("push.s \"is_cursed\"")
+            .InsertAbove(@"
+push.s ""weapon""
+conv.s.v
+push.v self.category
+call.i ds_list_find_index(argc=2)
+pushi.e 0
+cmp.i.v GTE
+bf [801]
+
+:[800]
+push.d 0.5
+pop.v.d local.bonus_weapon_price
+
+:[801]
+")
+            .Save();
+        
+        
+        Msl.AddNewEvent(weapon_dealer, @"
+            event_inherited()
+            scr_skill_atr(""weapon_dealer"")
+            passive = 1
+        ", EventType.Create, 0);
+        
+        Msl.AddNewEvent(corruption, @"
+            event_inherited()
+            scr_skill_atr(""corruption"")
+            passive = 1
+        ", EventType.Create, 0);
+
         Msl.AddSkillTree("Inspiration", MetaCaterory.Utilities, "s_branch_modded", 
             new SkillLocation("o_skill_pray_ico", 55, 24),
             new SkillLocation("o_pass_skill_weapon_dealer", 55, 81),
@@ -233,35 +274,6 @@ if(scr_passive_skill_is_open(o_pass_skill_fearsome, id))
         Msl.LoadGML("gml_GlobalScript_table_speech")
             .Apply(SpeechIterator)
             .Save();
-
-        Msl.InjectTableSkillsStat(
-            metaGroup: Msl.SkillsStatMetaGroup.MAGICMASTERY,
-            id: "pray",
-            Object: "o_b_pray", 
-            Target: Msl.SkillsStatTarget.NoTarget, 
-            Range: "0", 
-            KD: 20, 
-            MP: 10, 
-            Reserv: 0, 
-            Duration : 5, 
-            AOE_Lenght: 0, 
-            AOE_Width : 0, 
-            is_movement: false, 
-            Pattern: Msl.SkillsStatPattern.normal, 
-            Class : Msl.SkillsStatClass.skill, 
-            Bonus_Range: false, 
-            Starcast: "", 
-            Branch: Msl.SkillsStatBranch.none, 
-            is_knockback: false, 
-            Crime: false, 
-            metacategory: Msl.SkillsStatMetacategory.none, 
-            FMB: 0, 
-            AP: "x", 
-            Attack: false, 
-            Stance: false, 
-            Charge: false, 
-            Maneuver: true, 
-            Spell: false);
 
         Msl.LoadAssemblyAsString("gml_Object_o_skill_fast_panel_Alarm_0")
             .MatchFrom("pushi.e 3622")
@@ -345,12 +357,20 @@ popz.v";
 
         string id_pray = "o_b_pray";
         string name_pray_en = "Pray";
-        string name_pray = $"{id_pray};" + string.Concat(Enumerable.Repeat($"{name_pray_en};", 12));
-        string desc_pray_en = "Your prayer was answered ! Or maybe you are just more confident about yourself.";
-        string desc_pray = $"{id_pray};" + string.Concat(Enumerable.Repeat($"{desc_pray_en};", 12));
 
-        string name = $"\"{name_pray}\",";
-        string desc = $"\"{desc_pray}\",";
+        Dictionary<ModLanguage, string> name_pray_dict = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {
+           {ModLanguage.English, name_pray_en},
+        });
+        string name_pray = $"\"{id_pray};{string.Join(";", name_pray_dict.Values)}\",";
+
+        string desc_pray_en = "Your prayer was answered ! Or maybe you are just more confident about yourself.";
+        Dictionary<ModLanguage, string> desc_pray_dict = Localization.SetDictionary(new Dictionary<ModLanguage, string>() {
+           {ModLanguage.English, desc_pray_en},
+        });
+        string desc_pray = $"\"{id_pray};{string.Join(";", desc_pray_dict.Values)}\",";
+
+        string name = $"{name_pray},";
+        string desc = $"{desc_pray},";
         
         foreach(string item in input)
         {
